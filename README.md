@@ -14,31 +14,37 @@ Planned modes:
 
 ## Current Status
 
-The repository already contains the initial Unity project scaffold, but the gameplay and networking
-systems are still at an early stage.
+The repository contains the working Unity 6 project with baseline multiplayer networking implemented:
 
-Current state:
+- **Engine**: Unity 6 (`6000.4.2f1`).
+- **Networking Stack**:
+  - Unity Netcode for GameObjects (NGO) `2.13.3`.
+  - Unity Transport (UTP) `2.7.4`.
+  - Unity Relay `1.1.1` & Unity Authentication `3.3.4` (for cross-network WAN play without port forwarding).
+- **Core Scripts**:
+  - `Assets/Scripts/UI/ConnectionHUD.cs`: Immediate OnGUI HUD supporting **Unity Relay Join Codes** and **Direct IP**.
+  - `Assets/Scripts/Networking/NetworkBootstrap.cs`: Host, Client, and Dedicated Server lifecycle management.
+  - `Assets/Scripts/Networking/SessionManager.cs`: Host-authoritative synchronized session player list.
+  - `Assets/Scripts/Networking/PlayerData.cs`: Network-serializable player struct.
+  - `Assets/Scripts/Editor/BuildHelper.cs`: 1-click Windows standalone build menu tool.
 
-- Unity project created.
-- Base sample scene present.
-- Detailed multiplayer architecture notes moved to `.agents/skills` for future AI-assisted work.
+## How to Run & Test
 
-## Tech Stack
+### In the Unity Editor
+1. Open this repository in Unity Editor `6000.4.2f1`.
+2. Open `Assets/Scenes/SampleScene.unity`.
+3. Press **Play**.
+4. The **Multiplayer Session HUD** will appear on screen.
 
-- Engine: Unity 6 (`6000.4.2f1`).
-- Language: C#.
-- Platform target: PC.
+### Connecting Across Different Wi-Fi Networks (Unity Relay)
+1. Link your Unity project: In Unity, go to **Edit > Project Settings > Services** and link or create a Project ID (free).
+2. **Device 1 (Host)**: Click **Host New Match (Generate Code)**. The HUD will show a 6-character Join Code (e.g. `ABC123`). Copy and send it to player 2.
+3. **Device 2 (Client)**: Paste the Join Code and click **Join Match with Code**.
 
-## How to Run
-
-1. Install Unity Hub.
-2. Install Unity Editor `6000.4.2f1`.
-3. Open this repository as a Unity project.
-4. Open the scene `Assets/Scenes/SampleScene.unity`.
-5. Press Play in the Unity Editor.
-
-At the moment this runs the initial project scaffold. The full multiplayer gameplay loop is still in
-development.
+### Building for Windows
+In the Unity Editor top menu, select:
+**`Tools` -> `Multiplayer` -> `Build Windows Standalone (.exe)`**
+This compiles the player directly into the `Builds/` folder and opens it in Windows Explorer.
 
 ## Ownership
 
