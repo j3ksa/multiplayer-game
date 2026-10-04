@@ -20,22 +20,23 @@ Core concept:
 
 ## Current Repository Maturity
 
-- The Unity project scaffold exists.
-- The repository includes the default sample scene and project configuration.
-- Gameplay, networking flow, and production structure are still incomplete.
+- The Unity project scaffold exists on Unity 6 (`6000.4.2f1`).
+- Multiplayer networking baseline is installed (`com.unity.netcode.gameobjects`, `com.unity.transport`, `com.unity.services.relay`, `com.unity.services.authentication`, `com.unity.services.core`).
+- Core networking scripts are implemented under `Assets/Scripts/`:
+  - `Assets/Scripts/Networking/`: `NetworkBootstrap.cs`, `SessionManager.cs`, `PlayerData.cs`.
+  - `Assets/Scripts/UI/`: `ConnectionHUD.cs` supporting both Unity Relay (Join Codes) and Direct IP (LAN/VPN).
+  - `Assets/Scripts/Editor/`: `BuildHelper.cs` for 1-click Windows standalone builds.
 - Documentation and skill files remain the source of truth for architecture assumptions.
-
-AI contributors should avoid pretending that unfinished gameplay systems already exist.
 
 ## Recommended Technical Direction
 
 Until the team makes a different decision, assume the project is targeting:
 
-- Unity on PC.
+- Unity on PC (Unity 6 `6000.4.2f1`).
 - C# gameplay code.
-- Unity ECS, Jobs, and Burst as the main gameplay implementation direction.
-- Unity Netcode for GameObjects.
-- Unity Transport.
+- Unity Netcode for GameObjects (NGO).
+- Unity Transport (UTP).
+- Unity Relay and Authentication (for cross-network WAN play without router port forwarding).
 - Host-client topology with host-authoritative shared game state.
 
 The host should be treated as authoritative for:
@@ -52,10 +53,10 @@ The host should be treated as authoritative for:
 When contributing to this repository in the future:
 
 - Prefer small, reversible changes.
+- **Critical NGO Hierarchy Rule**: Never add a `NetworkBehaviour` to the `NetworkManager` GameObject or any of its children. `NetworkManager` must only host standard `MonoBehaviour` components (like `ConnectionHUD`) and `UnityTransport`. Networked state managers (`NetworkBehaviour`) must reside on their own separate GameObjects with a `NetworkObject`.
+- **UI Architecture Rule**: UI systems use `com.unity.ugui` (uGUI & TextMeshPro). Always design UI scripts with `[SerializeField]` references (Buttons, TMP_Text, TMP_InputField, Containers, Prefabs) and public event methods so the user can freely build, style, and attach their own custom Canvas UI elements in the Unity Inspector. Provide optional fallback IMGUI only when Canvas references are left unassigned.
 - Keep gameplay-critical state authoritative on the host unless the project architecture changes.
 - Distinguish clearly between local presentation logic and networked game state.
-- Do not invent backend services, scene names, or folder structures as hard facts unless they are
-  present in the repository.
 - Update README.md when architectural assumptions materially change.
 
 ## Expected Future Structure
@@ -113,13 +114,12 @@ If future work changes the scope, game modes, or networking approach:
 - Prefer one clear recommendation over several half-defined alternatives.
 
 ## Known Open Decisions
+ 
+The following items remain open:
 
-The following items remain intentionally undecided:
-
-- Match discovery backend.
-- Maximum supported player count.
+- Match discovery / lobby listing backend (Lobby service vs. Join Code sharing).
+- Maximum supported player count per session.
 - Final map and scene naming.
-- Final testing workflow.
 - Dedicated server support versus host-only support.
 
 ## Scope Guardrail

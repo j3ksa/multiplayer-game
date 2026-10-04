@@ -7,9 +7,33 @@ description: "Use when: you need the recommended Unity multiplayer stack, author
 
 ## Recommended Stack
 
-- Unity Netcode for GameObjects.
-- Unity Transport.
+- Unity Netcode for GameObjects (NGO) `2.13.3`.
+- Unity Transport (UTP) `2.7.4`.
+- Unity Relay `1.1.1` and Unity Authentication `3.3.4` (for cross-network WAN play without router port forwarding).
 - Host-client session topology.
+
+## Critical NGO Component Hierarchy Rule
+
+In Netcode for GameObjects (NGO), **`NetworkManager` is strictly prohibited from having any `NetworkBehaviour` component attached to its root GameObject or any of its children**.
+
+- `[NetworkManager]` GameObject must ONLY contain:
+  - `NetworkManager`
+  - `UnityTransport`
+  - Standard `MonoBehaviour` utility components (such as `ConnectionHUD`).
+- Any networked gameplay script inheriting from `NetworkBehaviour` (such as `SessionManager` or player controllers) must be placed on its own separate GameObject that contains a `NetworkObject` component.
+
+## Cross-Network Connectivity (WAN & Wi-Fi)
+
+To allow players on different Wi-Fi networks (different NATs/firewalls) to connect without manual router port forwarding:
+
+1. **Unity Relay (Primary)**:
+   - Host requests an allocation from Unity Relay via `RelayService.Instance.CreateAllocationAsync()`.
+   - Host retrieves a 6-character Join Code via `GetJoinCodeAsync()`.
+   - Host configures `UnityTransport` using `transport.SetHostRelayData(...)`.
+   - Client joins using `RelayService.Instance.JoinAllocationAsync(joinCode)` and `transport.SetClientRelayData(...)`.
+   - Relay proxies the UDP traffic securely over the internet.
+2. **Direct IP (Fallback)**:
+   - Supports LAN, VPN (e.g. Tailscale / ZeroTier), or manual router port forwarding on port `7777`.
 
 ## Authority Model
 
@@ -39,10 +63,10 @@ Unity Transport uses UDP-style networking suitable for real-time gameplay.
 ## Why This Direction
 
 This stack fits a student Unity project because it minimizes infrastructure overhead while still
-supporting real-time multiplayer design.
+supporting real-time multiplayer design over both LAN and the public internet.
 
 ## Open Decisions
 
-- Final discovery or lobby backend.
-- Final player count.
+- Match discovery / lobby listing backend (Lobby service vs. Join Code sharing).
+- Final player count per session.
 - Whether the project will stay host-only or later add dedicated-server support.
