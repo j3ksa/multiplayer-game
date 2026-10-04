@@ -9,7 +9,7 @@ namespace MultiplayerGame.Networking
 {
     /// <summary>
     /// Host-authoritative session manager that tracks connected players,
-    /// ready states, and coordinates scene transitions.
+    /// ready states, lobby metadata, and coordinates match transitions.
     /// </summary>
     public class SessionManager : NetworkBehaviour
     {
@@ -18,6 +18,12 @@ namespace MultiplayerGame.Networking
         [Header("Scene Configuration")]
         [SerializeField] private string gameplaySceneName = "SampleScene";
 
+        // Host-authoritative synchronized lobby name
+        private readonly NetworkVariable<FixedString64Bytes> lobbyName = new NetworkVariable<FixedString64Bytes>(
+            new FixedString64Bytes("Multiplayer Game"),
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server);
+
         // Host-authoritative synchronized list of players in the current session
         private readonly NetworkList<PlayerData> players = new NetworkList<PlayerData>(
             new System.Collections.Generic.List<PlayerData>(),
@@ -25,9 +31,12 @@ namespace MultiplayerGame.Networking
             NetworkVariableWritePermission.Server);
 
         public NetworkList<PlayerData> Players => players;
+        public string CurrentLobbyName => lobbyName.Value.ToString();
+        public bool IsMatchStarted { get; private set; } = false;
 
         public event Action OnPlayersChanged;
         public event Action<bool> OnAllPlayersReadyStatusChanged;
+        public event Action OnMatchStarted;
 
         private void Awake()
         {
@@ -44,6 +53,7 @@ namespace MultiplayerGame.Networking
         public override void OnNetworkSpawn()
         {
             players.OnListChanged += HandlePlayersListChanged;
+            IsMatchStarted = false;
 
             if (IsServer)
             {
@@ -53,16 +63,31 @@ namespace MultiplayerGame.Networking
                 // Register host player
                 RegisterPlayer(NetworkManager.Singleton.LocalClientId, isHost: true);
             }
+            else
+            {
+                // Request server to set client's display name
+                string localName = PlayerPrefs.GetString("Multiplayer_PlayerName", $"Player_{NetworkManager.Singleton.LocalClientId}");
+                SetPlayerNameRpc(localName);
+            }
         }
 
         public override void OnNetworkDespawn()
         {
             players.OnListChanged -= HandlePlayersListChanged;
+            IsMatchStarted = false;
 
             if (IsServer && NetworkManager.Singleton != null)
             {
                 NetworkManager.Singleton.OnClientConnectedCallback -= HandleServerClientConnected;
                 NetworkManager.Singleton.OnClientDisconnectCallback -= HandleServerClientDisconnected;
+            }
+        }
+
+        public void SetLobbyName(string name)
+        {
+            if (IsServer && !string.IsNullOrEmpty(name))
+            {
+                lobbyName.Value = new FixedString64Bytes(name);
             }
         }
 
@@ -90,15 +115,25 @@ namespace MultiplayerGame.Networking
             }
 
             string playerName = $"Player_{clientId}";
-            if (isHost && NetworkBootstrap.Instance != null && !string.IsNullOrEmpty(NetworkBootstrap.Instance.LocalPlayerName))
+            if (isHost)
             {
-                playerName = NetworkBootstrap.Instance.LocalPlayerName;
+                playerName = PlayerPrefs.GetString("Multiplayer_PlayerName", "Host");
+                if (NetworkBootstrap.Instance != null && !string.IsNullOrEmpty(NetworkBootstrap.Instance.LocalPlayerName))
+                {
+                    playerName = NetworkBootstrap.Instance.LocalPlayerName;
+                }
             }
 
-            // Host is automatically ready, or can toggle like others
+            // Host is automatically marked ready
             PlayerData newPlayer = new PlayerData(clientId, playerName, isReady: isHost, isHost: isHost);
             players.Add(newPlayer);
             Debug.Log($"[SessionManager] Registered player: {newPlayer}");
+
+            // Update LAN discovery player count if broadcasting
+            if (LANDiscoveryManager.Instance != null && LANDiscoveryManager.Instance.IsBroadcasting)
+            {
+                LANDiscoveryManager.Instance.UpdatePlayerCount(players.Count);
+            }
         }
 
         private void UnregisterPlayer(ulong clientId)
@@ -112,6 +147,11 @@ namespace MultiplayerGame.Networking
                     break;
                 }
             }
+
+            if (LANDiscoveryManager.Instance != null && LANDiscoveryManager.Instance.IsBroadcasting)
+            {
+                LANDiscoveryManager.Instance.UpdatePlayerCount(players.Count);
+            }
         }
 
         private void HandlePlayersListChanged(NetworkListEvent<PlayerData> changeEvent)
@@ -121,10 +161,32 @@ namespace MultiplayerGame.Networking
         }
 
         /// <summary>
+        /// Request to update player's display name from client to host.
+        /// </summary>
+        [Rpc(SendTo.Server)]
+        public void SetPlayerNameRpc(string newName, RpcParams rpcParams = default)
+        {
+            if (string.IsNullOrWhiteSpace(newName)) return;
+
+            ulong senderClientId = rpcParams.Receive.SenderClientId;
+            for (int i = 0; i < players.Count; i++)
+            {
+                if (players[i].ClientId == senderClientId)
+                {
+                    PlayerData updated = players[i];
+                    updated.PlayerName = new FixedString64Bytes(newName.Trim());
+                    players[i] = updated;
+                    Debug.Log($"[SessionManager] Updated name for client {senderClientId}: {updated.PlayerName}");
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
         /// Request to toggle or set ready state from a client.
         /// </summary>
-        [ServerRpc(RequireOwnership = false)]
-        public void SetReadyServerRpc(bool isReady, ServerRpcParams rpcParams = default)
+        [Rpc(SendTo.Server)]
+        public void SetReadyRpc(bool isReady, RpcParams rpcParams = default)
         {
             ulong senderClientId = rpcParams.Receive.SenderClientId;
 
@@ -140,6 +202,7 @@ namespace MultiplayerGame.Networking
                 }
             }
         }
+
 
         /// <summary>
         /// Checks whether all players in the session are marked ready.
@@ -193,8 +256,24 @@ namespace MultiplayerGame.Networking
                 return;
             }
 
+            IsMatchStarted = true;
+            OnMatchStarted?.Invoke();
+
+            // Stop public broadcast once game begins
+            if (LANDiscoveryManager.Instance != null)
+            {
+                LANDiscoveryManager.Instance.StopBroadcasting();
+            }
+
             Debug.Log($"[SessionManager] Starting match. Loading scene: {gameplaySceneName}");
-            NetworkManager.Singleton.SceneManager.LoadScene(gameplaySceneName, LoadSceneMode.Single);
+            if (NetworkManager.Singleton.SceneManager != null)
+            {
+                NetworkManager.Singleton.SceneManager.LoadScene(gameplaySceneName, LoadSceneMode.Single);
+            }
+            else
+            {
+                SceneManager.LoadScene(gameplaySceneName, LoadSceneMode.Single);
+            }
         }
     }
 }

@@ -22,9 +22,10 @@ The repository contains the working Unity 6 project with baseline multiplayer ne
   - Unity Transport (UTP) `2.7.4`.
   - Unity Relay `1.1.1` & Unity Authentication `3.3.4` (for cross-network WAN play without port forwarding).
 - **Core Scripts**:
-  - `Assets/Scripts/UI/ConnectionHUD.cs`: Immediate OnGUI HUD supporting **Unity Relay Join Codes** and **Direct IP**.
-  - `Assets/Scripts/Networking/NetworkBootstrap.cs`: Host, Client, and Dedicated Server lifecycle management.
-  - `Assets/Scripts/Networking/SessionManager.cs`: Host-authoritative synchronized session player list.
+  - `Assets/Scripts/UI/ConnectionHUD.cs`: Complete match browser HUD with **Server List (browsing available games)**, **Host Game creation**, and **Direct Connect**.
+  - `Assets/Scripts/UI/LobbyUI.cs`: Synchronized pre-match lobby room displaying player roster, ready statuses, and host match launch trigger.
+  - `Assets/Scripts/Networking/LANDiscoveryManager.cs`: UDP broadcast discovery system for detecting active LAN and loopback sessions in real time.
+  - `Assets/Scripts/Networking/SessionManager.cs`: Host-authoritative synchronized session player list, ready checks, and scene transition coordinator.
   - `Assets/Scripts/Networking/PlayerData.cs`: Network-serializable player struct.
   - `Assets/Scripts/Editor/BuildHelper.cs`: 1-click Windows standalone build menu tool.
 

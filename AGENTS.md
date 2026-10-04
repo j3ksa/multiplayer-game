@@ -54,7 +54,7 @@ When contributing to this repository in the future:
 
 - Prefer small, reversible changes.
 - **Critical NGO Hierarchy Rule**: Never add a `NetworkBehaviour` to the `NetworkManager` GameObject or any of its children. `NetworkManager` must only host standard `MonoBehaviour` components (like `ConnectionHUD`) and `UnityTransport`. Networked state managers (`NetworkBehaviour`) must reside on their own separate GameObjects with a `NetworkObject`.
-- Avoid adding unnecessary packages or UI dependencies (e.g., `com.unity.ugui`) unless explicitly requested and confirmed.
+- **UI Architecture Rule**: UI systems use `com.unity.ugui` (uGUI & TextMeshPro). Always design UI scripts with `[SerializeField]` references (Buttons, TMP_Text, TMP_InputField, Containers, Prefabs) and public event methods so the user can freely build, style, and attach their own custom Canvas UI elements in the Unity Inspector. Provide optional fallback IMGUI only when Canvas references are left unassigned.
 - Keep gameplay-critical state authoritative on the host unless the project architecture changes.
 - Distinguish clearly between local presentation logic and networked game state.
 - Update README.md when architectural assumptions materially change.

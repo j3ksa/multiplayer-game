@@ -22,7 +22,8 @@ description: "Use when: you need the planned implementation phases, high-level d
 
 - [ ] Networked player prefab and spawning logic (Capsule / tower-top character).
 - [ ] Tower-top FPS player movement and look synchronization.
-- [ ] Pre-match ready-state UI and host match start trigger.
+- [x] Server list (browsing available active games in real time).
+- [x] Pre-match lobby ready-state UI and host match start trigger.
 - [ ] Scene transitions between lobby and gameplay.
 
 ## Phase 3
